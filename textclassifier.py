@@ -11,9 +11,36 @@ import pickle
 import nltk
 from nltk.corpus import movie_reviews
 from nltk.classify.scikitlearn import SklearnClassifier
-from sklearn.naive_bayes import MultinomialNB, GaussianNB, BernoulliNB
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
 from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.svm import SVC, LinearSVC, NuSVC
+from sklearn.svm import LinearSVC, NuSVC
+
+from nltk.classify import ClassifierI
+from statistics import mode
+
+class VoteClassifier(ClassifierI):
+    def __init__(self, *classifiers):
+        self._classifiers = classifiers
+        
+    
+    def classify(self, features):
+        votes = []
+        for c in self._classifiers:
+            v = c.classify(features)
+            votes.append(v)
+        return mode(votes)
+    
+    def confidence(self, features):
+        votes = []
+        for c in self._classifiers:
+            v = c.classify(features)
+            votes.append(v)
+            
+        choice_votes = votes.count(mode(votes))
+        conf = choice_votes / len(votes)
+        return conf
+    
+
 
 documents = [(list(movie_reviews.words(fileid)), category) 
             for category in movie_reviews.categories()
@@ -47,14 +74,15 @@ def find_features(document):
 
 featuresets = [(find_features(rev), category) for (rev, category) in documents]
 
-training_set = featuresets[:1900]
-test_set = featuresets[1900:]
+training_set = featuresets[:1800]
+test_set = featuresets[1800:]
 
 #classifier = nltk.NaiveBayesClassifier.train(training_set)
 
 classifier_f = open("naivebayes.pickle", "rb")
 classifier = pickle.load(classifier_f)
 classifier_f.close()
+
 
 
 classifier.show_most_informative_features(15)
@@ -88,9 +116,11 @@ SGDClassifier_classifier.train(training_set)
 print("SGDClassifier_classifier accuracy percent:",nltk.classify.accuracy(SGDClassifier_classifier, test_set)*100)
 
 #Support Vector classifier
-SVC_classifier = SklearnClassifier(SVC())
-SVC_classifier.train(training_set)
-print("SVC_classifier accuracy percent:",nltk.classify.accuracy(SVC_classifier, test_set)*100)
+# =============================================================================
+# SVC_classifier = SklearnClassifier(SVC())
+# SVC_classifier.train(training_set)
+# print("SVC_classifier accuracy percent:",nltk.classify.accuracy(SVC_classifier, test_set)*100)
+# =============================================================================
 
 #Linear SVC
 LinearSVC_classifier = SklearnClassifier(LinearSVC())
@@ -101,3 +131,21 @@ print("LinearSVC_classifier accuracy percent:",nltk.classify.accuracy(LinearSVC_
 NuSVC_classifier = SklearnClassifier(NuSVC())
 NuSVC_classifier.train(training_set)
 print("NuSVC_classifier accuracy percent:",nltk.classify.accuracy(NuSVC_classifier, test_set)*100)
+
+#new voted classifier
+voted_classifier = VoteClassifier(classifier,
+                                  NuSVC_classifier, 
+                                  LinearSVC_classifier, 
+                                  SGDClassifier_classifier, 
+                                  MNB_classifier, 
+                                  BNB_classifier, 
+                                  LogisticRegression_classifier)
+
+print("voted_classifier accuracy percent:", (nltk.classify.accuracy(voted_classifier, test_set))*100)
+
+print("Classification:", voted_classifier.classify(test_set[0][0]), "Confidence %:", voted_classifier.confidence(test_set[0][0])*100)
+print("Classification:", voted_classifier.classify(test_set[1][0]), "Confidence %:", voted_classifier.confidence(test_set[1][0])*100)
+print("Classification:", voted_classifier.classify(test_set[2][0]), "Confidence %:", voted_classifier.confidence(test_set[2][0])*100)
+print("Classification:", voted_classifier.classify(test_set[3][0]), "Confidence %:", voted_classifier.confidence(test_set[3][0])*100)
+print("Classification:", voted_classifier.classify(test_set[4][0]), "Confidence %:", voted_classifier.confidence(test_set[4][0])*100)
+print("Classification:", voted_classifier.classify(test_set[5][0]), "Confidence %:", voted_classifier.confidence(test_set[5][0])*100)
