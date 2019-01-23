@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Wed Jan 23 14:24:41 2019
+
+@author: snigdharao
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Jan 22 17:40:35 2019
 
 @author: snigdharao
@@ -13,10 +21,13 @@ from nltk.corpus import movie_reviews
 from nltk.classify.scikitlearn import SklearnClassifier
 from sklearn.naive_bayes import MultinomialNB, BernoulliNB
 from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.svm import SVC, LinearSVC, NuSVC
+from sklearn.svm import LinearSVC, NuSVC
 
 from nltk.classify import ClassifierI
 from statistics import mode
+
+from nltk.tokenize import word_tokenize
+
 
 class VoteClassifier(ClassifierI):
     def __init__(self, *classifiers):
@@ -41,29 +52,46 @@ class VoteClassifier(ClassifierI):
         return conf
     
 
+short_pos = open("positive.txt","r").read()
+short_neg = open("negative.txt","r").read()
 
-documents = [(list(movie_reviews.words(fileid)), category) 
-            for category in movie_reviews.categories()
-            for fileid in movie_reviews.fileids(category)]
 
-random.shuffle(documents)
+documents = []
+
+for r in short_pos.split('\n'):
+    documents.append( (r, "pos") )
+    
+for r in short_neg.split('\n'):
+    documents.append( (r, "neg") )
+    
+
+#random.shuffle(documents)
 
 #print(documents[1])
 
 all_words = []
-for w in movie_reviews.words():
+
+short_pos_words = word_tokenize(short_pos)
+short_neg_words = word_tokenize(short_neg)
+
+for w in short_pos_words:
     all_words.append(w.lower())
+
+for w in short_neg_words:
+    all_words.append(w.lower())
+
     
 all_words = nltk.FreqDist(all_words)
+
 # =============================================================================
 # print(all_words.most_common(15))
 # print(all_words["stupid"])
 # =============================================================================
 
-word_features = list(all_words.keys())[:3000]
+word_features = list(all_words.keys())[:5000]
 
 def find_features(document):
-    words = set(document)
+    words = word_tokenize(document)
     features = {}
     for w in word_features:
         features[w] = (w in words)
@@ -74,19 +102,25 @@ def find_features(document):
 
 featuresets = [(find_features(rev), category) for (rev, category) in documents]
 
-training_set = featuresets[:1800]
-test_set = featuresets[1800:]
-
-#classifier = nltk.NaiveBayesClassifier.train(training_set)
-
-classifier_f = open("naivebayes.pickle", "rb")
-classifier = pickle.load(classifier_f)
-classifier_f.close()
+random.shuffle(featuresets)
 
 
+training_set = featuresets[:10000]
+test_set = featuresets[10000:]
 
+classifier = nltk.NaiveBayesClassifier.train(training_set)
 classifier.show_most_informative_features(15)
 print("Original Classifier accuracy percent:", (nltk.classify.accuracy(classifier, test_set))*100)
+
+
+# =============================================================================
+# classifier_f = open("naivebayes.pickle", "rb")
+# classifier = pickle.load(classifier_f)
+# classifier_f.close()
+# =============================================================================
+
+
+
 
 
 # =============================================================================
@@ -133,19 +167,17 @@ NuSVC_classifier.train(training_set)
 print("NuSVC_classifier accuracy percent:",nltk.classify.accuracy(NuSVC_classifier, test_set)*100)
 
 #new voted classifier
-voted_classifier = VoteClassifier(classifier,
-                                  NuSVC_classifier, 
+voted_classifier = VoteClassifier(NuSVC_classifier, 
                                   LinearSVC_classifier, 
-                                  SGDClassifier_classifier, 
                                   MNB_classifier, 
                                   BNB_classifier, 
                                   LogisticRegression_classifier)
 
 print("voted_classifier accuracy percent:", (nltk.classify.accuracy(voted_classifier, test_set))*100)
 
-print("Classification:", voted_classifier.classify(test_set[0][0]), "Confidence %:", voted_classifier.confidence(test_set[0][0])*100)
-print("Classification:", voted_classifier.classify(test_set[1][0]), "Confidence %:", voted_classifier.confidence(test_set[1][0])*100)
-print("Classification:", voted_classifier.classify(test_set[2][0]), "Confidence %:", voted_classifier.confidence(test_set[2][0])*100)
-print("Classification:", voted_classifier.classify(test_set[3][0]), "Confidence %:", voted_classifier.confidence(test_set[3][0])*100)
-print("Classification:", voted_classifier.classify(test_set[4][0]), "Confidence %:", voted_classifier.confidence(test_set[4][0])*100)
-print("Classification:", voted_classifier.classify(test_set[5][0]), "Confidence %:", voted_classifier.confidence(test_set[5][0])*100)
+#print("Classification:", voted_classifier.classify(test_set[0][0]), "Confidence %:", voted_classifier.confidence(test_set[0][0])*100)
+#print("Classification:", voted_classifier.classify(test_set[1][0]), "Confidence %:", voted_classifier.confidence(test_set[1][0])*100)
+#print("Classification:", voted_classifier.classify(test_set[2][0]), "Confidence %:", voted_classifier.confidence(test_set[2][0])*100)
+#print("Classification:", voted_classifier.classify(test_set[3][0]), "Confidence %:", voted_classifier.confidence(test_set[3][0])*100)
+#print("Classification:", voted_classifier.classify(test_set[4][0]), "Confidence %:", voted_classifier.confidence(test_set[4][0])*100)
+#print("Classification:", voted_classifier.classify(test_set[5][0]), "Confidence %:", voted_classifier.confidence(test_set[5][0])*100)
