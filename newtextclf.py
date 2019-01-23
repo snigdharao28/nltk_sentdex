@@ -17,7 +17,7 @@ import random
 import pickle
 
 import nltk
-from nltk.corpus import movie_reviews
+#from nltk.corpus import movie_reviews
 from nltk.classify.scikitlearn import SklearnClassifier
 from sklearn.naive_bayes import MultinomialNB, BernoulliNB
 from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -55,40 +55,63 @@ class VoteClassifier(ClassifierI):
 short_pos = open("positive.txt","r").read()
 short_neg = open("negative.txt","r").read()
 
-
+all_words = []
 documents = []
+
+
+allowed_word_types = ["J"]
+
 
 for r in short_pos.split('\n'):
     documents.append( (r, "pos") )
+    words = word_tokenize(r)
+    pos = nltk.pos_tag(words)
+    for w in pos:
+        if w[1][0] in allowed_word_types:
+            all_words.append(w[0].lower())
+            
     
 for r in short_neg.split('\n'):
     documents.append( (r, "neg") )
+    words = word_tokenize(r)
+    pos = nltk.pos_tag(words)
+    for w in pos:
+        if w[1][0] in allowed_word_types:
+            all_words.append(w[0].lower())
     
 
 #random.shuffle(documents)
 
+
 #print(documents[1])
 
-all_words = []
 
-short_pos_words = word_tokenize(short_pos)
-short_neg_words = word_tokenize(short_neg)
 
-for w in short_pos_words:
-    all_words.append(w.lower())
-
-for w in short_neg_words:
-    all_words.append(w.lower())
+#short_pos_words = word_tokenize(short_pos)
+#short_neg_words = word_tokenize(short_neg)
+#
+#for w in short_pos_words:
+#    all_words.append(w.lower())
+#
+#for w in short_neg_words:
+#    all_words.append(w.lower())
 
     
+save_documents = open("pickled_algos/documents.pickle", "wb")
+pickle.dump(documents, save_documents)
+save_documents.close()
+
+
 all_words = nltk.FreqDist(all_words)
 
-# =============================================================================
-# print(all_words.most_common(15))
-# print(all_words["stupid"])
-# =============================================================================
-
 word_features = list(all_words.keys())[:5000]
+
+
+save_word_features = open("pickled_algos/word_features5k.pickle", "wb")
+pickle.dump(word_features, save_word_features)
+save_word_features.close()
+
+
 
 def find_features(document):
     words = word_tokenize(document)
@@ -98,41 +121,38 @@ def find_features(document):
         
     return features
 
+
+#print(all_words.most_common(15))
+#print(all_words["stupid"])
 #print((find_features(movie_reviews.words('neg/cv350_22139.txt'))))
 
 featuresets = [(find_features(rev), category) for (rev, category) in documents]
 
 random.shuffle(featuresets)
+print(len(featuresets))
 
 
 training_set = featuresets[:10000]
 test_set = featuresets[10000:]
 
+#original naive bayes
 classifier = nltk.NaiveBayesClassifier.train(training_set)
 classifier.show_most_informative_features(15)
 print("Original Classifier accuracy percent:", (nltk.classify.accuracy(classifier, test_set))*100)
-
-
-# =============================================================================
-# classifier_f = open("naivebayes.pickle", "rb")
-# classifier = pickle.load(classifier_f)
-# classifier_f.close()
-# =============================================================================
-
-
-
-
-
-# =============================================================================
-# save_classifier = open("naivebayes.pickle","wb")
-# pickle.dump(classifier, save_classifier)
-# save_classifier.close()
-# =============================================================================
+#saving originalnaivebayes
+save_classifier = open("picked_algos/originalnaivebayes5k.pickle","wb")
+pickle.dump(classifier, save_classifier)
+save_classifier.close()
 
 #Multinomial NB
 MNB_classifier = SklearnClassifier(MultinomialNB())
 MNB_classifier.train(training_set)
 print("MultinomialNB accuracy percent:",nltk.classify.accuracy(MNB_classifier,test_set)*100)
+#saving multinomial NB
+save_classifier = open("pickled_algos/MNB_classifier5k.pickle","wb")
+pickle.dump(MNB_classifier, save_classifier)
+save_classifier.close()
+
 
 #Bernoulli NB
 BNB_classifier = SklearnClassifier(BernoulliNB())
